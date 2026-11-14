@@ -14,3 +14,12 @@ Developer Disk Image, and mTLS identity before attempting package operations.
 Resolve an app's bundle path, data container, and app group containers with
 `app_container --bundle <bundle id>`; `--path Documents/X` also returns the
 resolved path inside the data container and whether it exists.
+
+Install an IPA under another bundle id, next to the App Store copy, with
+`app_sideload --ipa <path> --bundleId <new id>`. It runs on the Mac: each bundle
+gets the newest unexpired Xcode profile that covers its new id, lists the
+device, and is signed by the chosen identity (`--identity`, else the first one
+with such a profile). Extensions get `<new id>.<suffix>`; one without a profile
+is dropped and reported. Entitlements come from the profile, so app groups are
+the profile's, and the result lists them. Register missing ids and the device in
+Xcode first; `--install false` signs without installing and keeps the app.

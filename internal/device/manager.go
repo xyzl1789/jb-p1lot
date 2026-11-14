@@ -24,6 +24,7 @@ import (
 	"github.com/castdrian/jb-p1lot/internal/protocol"
 	"github.com/castdrian/jb-p1lot/internal/registry"
 	"github.com/castdrian/jb-p1lot/internal/session"
+	"github.com/castdrian/jb-p1lot/internal/sideload"
 	"github.com/castdrian/jb-p1lot/internal/transport"
 )
 
@@ -95,6 +96,9 @@ func (m *Manager) Execute(ctx context.Context, request registry.Request) (regist
 	}
 	if request.Command == "tweak_cycle" {
 		return m.tweakCycle(ctx, selected, request)
+	}
+	if request.Command == "app_sideload" {
+		return m.appSideload(ctx, selected, request)
 	}
 	if request.Command == "self_update" {
 		return m.selfUpdate(ctx, selected, request)
@@ -531,6 +535,33 @@ func (m *Manager) tweakBuild(ctx context.Context, request registry.Request) (reg
 	}
 	packagePath := packages[len(packages)-1]
 	return registry.Result{Data: map[string]any{"package": packagePath, "output": boundedString(output)}}, nil
+}
+
+func (m *Manager) appSideload(ctx context.Context, selected discovery.Device, request registry.Request) (registry.Result, error) {
+	ipa := paramString(request.Params, "ipa", "")
+	if ipa != "" && !filepath.IsAbs(ipa) {
+		ipa = filepath.Join(m.config.ProjectRoot, ipa)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, time.Duration(paramInt(request.Params, "timeoutMs", 10*60*1000))*time.Millisecond)
+	defer cancel()
+	result, err := sideload.Sideload(callCtx, runHostCommand, sideload.Options{
+		IPA:        ipa,
+		BundleID:   paramString(request.Params, "bundleId", ""),
+		Identity:   paramString(request.Params, "identity", ""),
+		ProfileDir: paramString(request.Params, "profileDir", ""),
+		Device:     selected.ID,
+		Install:    paramBool(request.Params, "install", true),
+	})
+	return registry.Result{Data: result}, err
+}
+
+func runHostCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	output, err := exec.CommandContext(ctx, name, args...).Output()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return output, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(exitErr.Stderr)))
+	}
+	return output, err
 }
 
 func (m *Manager) tweakCycle(ctx context.Context, selected discovery.Device, request registry.Request) (registry.Result, error) {
