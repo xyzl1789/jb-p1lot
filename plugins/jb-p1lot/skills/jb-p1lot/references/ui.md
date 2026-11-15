@@ -13,6 +13,10 @@ appears, or disappears with `--absent true`.
 Use `screen_capture` to verify visual state and `ui_action` with normalized
 coordinates or screen points when semantic nodes are unavailable. The visual
 path remains independent of XCTest/WDA and works for SpringBoard surfaces.
+`screen_capture` also lists SpringBoard's raised windows in `meta.elevatedWindows`,
+and any alert among them (such as an Apple Account sign-in request) in
+`meta.systemAlerts` with its text and buttons, printing a `WARN` line. An alert
+covers the app and swallows taps, and accessibility snapshots do not see it.
 Use HID actions for taps, long presses, drags, swipes, multitouch, Unicode
 text, hardware buttons, display control, and system gestures. `screen_on`
 (or `wake`) wakes SpringBoard without changing the blackout, so the panel stays

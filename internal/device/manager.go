@@ -296,7 +296,39 @@ func (m *Manager) screenCapture(ctx context.Context, client *transport.Client, p
 	if err != nil {
 		return registry.Result{}, err
 	}
-	return registry.Result{Image: data, MIMEType: "image/png", ArtifactPath: path, Meta: map[string]any{"protectedLayers": false}}, nil
+	meta := map[string]any{"protectedLayers": false}
+	if windows := m.elevatedWindows(ctx, client); windows != nil {
+		meta["elevatedWindows"] = windows
+		if alerts := systemAlerts(windows); len(alerts) > 0 {
+			meta["systemAlerts"] = alerts
+		}
+	}
+	return registry.Result{Image: data, MIMEType: "image/png", ArtifactPath: path, Meta: meta}, nil
+}
+
+func systemAlerts(windows []map[string]any) []map[string]any {
+	var alerts []map[string]any
+	for _, window := range windows {
+		class, _ := window["class"].(string)
+		if strings.Contains(class, "Alert") {
+			alerts = append(alerts, map[string]any{"class": class, "labels": window["labels"]})
+		}
+	}
+	return alerts
+}
+
+func (m *Manager) elevatedWindows(ctx context.Context, client *transport.Client) []map[string]any {
+	response, err := client.Call(ctx, "ui.windows", map[string]any{})
+	if err != nil {
+		return nil
+	}
+	var payload struct {
+		Windows []map[string]any `json:"windows"`
+	}
+	if json.Unmarshal(response.Payload, &payload) != nil {
+		return nil
+	}
+	return payload.Windows
 }
 
 func (m *Manager) ideviceScreenshot(ctx context.Context, deviceID string) (registry.Result, error) {

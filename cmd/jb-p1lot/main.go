@@ -239,12 +239,21 @@ func writeResult(result registry.Result, jsonOutput bool) {
 		writeJSON(value)
 		return
 	}
+	warnAboutSystemAlerts(result.Meta)
 	if result.ArtifactPath != "" {
 		fmt.Println(result.ArtifactPath)
 		return
 	}
 	encoded, _ := json.MarshalIndent(value["data"], "", "  ")
 	fmt.Println(string(encoded))
+}
+
+func warnAboutSystemAlerts(meta map[string]any) {
+	alerts, _ := meta["systemAlerts"].([]map[string]any)
+	for _, alert := range alerts {
+		labels, _ := json.Marshal(alert["labels"])
+		fmt.Fprintf(os.Stderr, "WARN a system alert (%v) is covering the screen: %s\n", alert["class"], labels)
+	}
 }
 
 func writeError(err error, jsonOutput bool) {

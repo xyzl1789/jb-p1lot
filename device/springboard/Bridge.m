@@ -32,6 +32,33 @@ static NSDictionary *JBP1lotScreenState(void) {
     return state;
 }
 
+static void JBP1lotCollectLabels(UIView *view, NSMutableArray<NSString *> *labels) {
+    if (labels.count >= 12 || view.hidden || view.alpha <= 0.01) return;
+    if ([view isKindOfClass:[UILabel class]] && ((UILabel *)view).text.length) [labels addObject:((UILabel *)view).text];
+    for (UIView *subview in view.subviews) JBP1lotCollectLabels(subview, labels);
+}
+
+static NSArray<UIWindow *> *JBP1lotAllWindows(void) {
+    NSMutableOrderedSet<UIWindow *> *windows = [NSMutableOrderedSet orderedSet];
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) [windows addObjectsFromArray:((UIWindowScene *)scene).windows];
+    }
+    return windows.array;
+}
+
+static NSArray<NSDictionary *> *JBP1lotElevatedWindows(void) {
+    __block NSMutableArray<NSDictionary *> *result = [NSMutableArray array];
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        for (UIWindow *window in JBP1lotAllWindows()) {
+            if (window.hidden || window.alpha <= 0.01 || window.windowLevel <= UIWindowLevelNormal) continue;
+            NSMutableArray<NSString *> *labels = [NSMutableArray array];
+            JBP1lotCollectLabels(window, labels);
+            [result addObject:@{ @"class": NSStringFromClass(window.class), @"level": @(window.windowLevel), @"labels": labels }];
+        }
+    });
+    return result;
+}
+
 static NSDictionary *JBP1lotApplicationProcess(id bundleIdentifier) {
     __block NSDictionary *result = nil;
     dispatch_sync(dispatch_get_main_queue(), ^{
@@ -76,6 +103,9 @@ static NSDictionary *JBP1lotAgentResponse(NSDictionary *request) {
     }
     if ([method isEqualToString:@"display.state"]) {
         return @{ @"status": @"ok", @"payload": JBP1lotScreenState() };
+    }
+    if ([method isEqualToString:@"ui.windows"]) {
+        return @{ @"status": @"ok", @"payload": @{ @"windows": JBP1lotElevatedWindows() } };
     }
     if ([method isEqualToString:@"ui.application"]) {
         return @{ @"status": @"ok", @"payload": JBP1lotApplicationProcess(params[@"bundleId"]) };
