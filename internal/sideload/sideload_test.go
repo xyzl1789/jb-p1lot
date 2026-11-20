@@ -1,6 +1,8 @@
 package sideload
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -74,5 +76,29 @@ func TestParseIdentities(t *testing.T) {
 	want := []string{"F745B6CC0706F2C8EAD62C9A1FD1090E52B2B893", "0123456789ABCDEF0123456789ABCDEF01234567"}
 	if got := ParseIdentities(output); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestDropEmptyExtensionsRemovesExtensionsWithoutInfoPlist(t *testing.T) {
+	app := filepath.Join(t.TempDir(), "Discord.app")
+	for _, dir := range []string{"LockscreenWidget.appex", "Share.appex"} {
+		if err := os.MkdirAll(filepath.Join(app, "PlugIns", dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(app, "PlugIns", "Share.appex", "Info.plist"), []byte("<plist/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dropped := DropEmptyExtensions(app)
+
+	if len(dropped) != 1 || filepath.Base(dropped[0].Path) != "LockscreenWidget.appex" {
+		t.Fatalf("dropped %v, want only LockscreenWidget.appex", dropped)
+	}
+	if _, err := os.Stat(filepath.Join(app, "PlugIns", "LockscreenWidget.appex")); !os.IsNotExist(err) {
+		t.Fatalf("LockscreenWidget.appex still exists: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(app, "PlugIns", "Share.appex", "Info.plist")); err != nil {
+		t.Fatalf("Share.appex was removed: %v", err)
 	}
 }

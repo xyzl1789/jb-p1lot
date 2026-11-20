@@ -77,6 +77,7 @@ func Sideload(ctx context.Context, run Runner, options Options) (Result, error) 
 		return Result{}, err
 	}
 	result := Result{App: app, Identity: identity}
+	result.Dropped = append(result.Dropped, DropEmptyExtensions(app)...)
 	bundles, err := plan(ctx, run, app, options.BundleID)
 	if err != nil {
 		return Result{}, err
@@ -115,6 +116,21 @@ func Sideload(ctx context.Context, run Runner, options Options) (Result, error) 
 		return result, fmt.Errorf("install: %w", err)
 	}
 	return result, nil
+}
+
+func DropEmptyExtensions(app string) []Bundle {
+	extensions, _ := filepath.Glob(filepath.Join(app, "PlugIns", "*.appex"))
+	sort.Strings(extensions)
+	var dropped []Bundle
+	for _, extension := range extensions {
+		if _, err := os.Stat(filepath.Join(extension, "Info.plist")); err == nil {
+			continue
+		}
+		if os.RemoveAll(extension) == nil {
+			dropped = append(dropped, Bundle{Path: extension})
+		}
+	}
+	return dropped
 }
 
 func pickIdentity(ctx context.Context, run Runner, options Options, profiles []Profile) (string, error) {
