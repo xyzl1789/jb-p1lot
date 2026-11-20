@@ -190,3 +190,16 @@ func TestBonjourPrefersTheUSBDeviceWhenNamesTie(t *testing.T) {
 		}
 	}
 }
+
+func TestBonjourBridgeMarksTheDeviceJailbroken(t *testing.T) {
+	merged := map[string]Device{"00008030-001624583AF9402E": {
+		ID:         "00008030-001624583AF9402E",
+		Name:       "Adrian's iPhone",
+		Connection: "usb",
+		Source:     "usbmux",
+	}}
+	mergeBonjourEndpoint(merged, "Adrians-iPhone.local.", 5912)
+	if device := merged["00008030-001624583AF9402E"]; !device.Bridge || !device.Jailbroken {
+		t.Fatalf("device=%#v", device)
+	}
+}

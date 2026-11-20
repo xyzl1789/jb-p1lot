@@ -216,7 +216,7 @@ func directDevice(selector string) (Device, bool) {
 	if net.ParseIP(host) == nil && !strings.Contains(host, ".") {
 		return Device{}, false
 	}
-	return Device{ID: selector, Name: selector, Connection: "wifi", Address: host, Port: port, Paired: true, Bridge: true, Source: "explicit"}, true
+	return Device{ID: selector, Name: selector, Connection: "wifi", Address: host, Port: port, Paired: true, Jailbroken: true, Bridge: true, Source: "explicit"}, true
 }
 
 func ResolveAddress(device Device) string {
@@ -427,6 +427,7 @@ func mergeBonjourEndpoint(merged map[string]Device, host string, port int) {
 		current.Source = "usbmux+bonjour"
 	}
 	current.Bridge = true
+	current.Jailbroken = true
 	current.Paired = true
 	merged[matchingID] = current
 }
